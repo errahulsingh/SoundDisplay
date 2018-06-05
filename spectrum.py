@@ -141,7 +141,7 @@ class SpectrumPlotter:
         def update_matrix():
             while(True):
                 for col, val in enumerate(reversed(self.li3.get_ydata())):
-                    self.matrix.maxAll(int(col + 1), int(2 * pow(2, val) - 1))
+                    self.matrix.maxAll(int(col + 1), int((2*pow(2, val-1)) - 1))
                 sleep(1/30)
         threading.Thread(target=update_matrix).start()
 

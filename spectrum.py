@@ -52,7 +52,7 @@ class SpectrumPlotter:
         ax[1].set_ylim(0, 100)
         ax[1].set_title("Fast Fourier Transform")
         # Plot 2 is for the binned FFT
-        self.li3 = ax[2].plot(x2, y2)[0]  # for some reason, returned as a list of 1
+        self.li3 = ax[2].plot(x2, y2, 'ro')[0]  # for some reason, returned as a list of 1
         ax[2].set_xlim(0, 7)
         ax[2].set_ylim(0, 7)
         ax[2].set_title("8-Binned FFT")
@@ -109,7 +109,7 @@ class SpectrumPlotter:
         self.li2.set_xdata(np.arange(len(dfft)) * 10.)
         self.li2.set_ydata(dfft)
         self.li3.set_xdata(np.arange(8))
-        self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 100))
+        self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 75))
 
         #for col, val in enumerate(self.li3.get_ydata()):
         #    self.matrix.maxAll(col+1, 2*pow(2, val)-1)
@@ -137,7 +137,7 @@ class SpectrumPlotter:
             while(True):
                 for col, val in enumerate(reversed(self.li3.get_ydata())):
                     self.matrix.maxAll(int(col + 1), int(2 * pow(2, int(val)) - 1))
-                sleep(.25)
+                sleep(1/30)
         threading.Thread(target=update_matrix).start()
 
         # Loop so program doesn't end while the stream callback's

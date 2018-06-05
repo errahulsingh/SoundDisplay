@@ -32,6 +32,7 @@ class SpectrumPlotter:
         self.init_matrix()
 
     def init_plot(self):
+        print('Initializing plot...')
         _, ax = plt.subplots(3)
 
         # Prepare the Plotting Environment with random starting values
@@ -58,8 +59,10 @@ class SpectrumPlotter:
         # Show the plot, but without blocking updates
         plt.pause(0.01)
         plt.tight_layout()
+        print('Done')
 
     def init_mic(self):
+        print('Initializing mic...')
         FORMAT = pyaudio.paInt16  # We use 16bit format per sample
         CHANNELS = 1
         self.RATE = 44100//2
@@ -78,9 +81,12 @@ class SpectrumPlotter:
 
         global keep_going
         keep_going = True
+        print('Done')
 
     def init_matrix(self):
+        print('Initializing Arduino...')
         self.board = Arduino('COM3')
+        print('Done')
         self.matrix = led_matrix.LedMatrix(self.board)
         self.matrix.setup()
 

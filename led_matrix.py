@@ -85,6 +85,7 @@ class LedMatrix:
             self.maxAll(e, 0)
 
     def setup(self):
+        print('Initializing matrix...')
         self._digitalWrite(13, HIGH)
         self.maxAll(max7219_reg_scanLimit, 0x07)
         self.maxAll(max7219_reg_decodeMode, 0x00)
@@ -92,6 +93,7 @@ class LedMatrix:
         self.maxAll(max7219_reg_displayTest, 0x00)
         self.clear()
         self.maxAll(max7219_reg_intensity, 0x0f & 0x0f)
+        print('Done')
 
 
 def loop(matrix):

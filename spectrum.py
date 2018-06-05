@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
 from scipy.signal import butter, lfilter
+from pyfirmata import Arduino
+import threading
+from time import sleep
+
+import led_matrix
 
 global keep_going
 
@@ -24,6 +29,7 @@ class SpectrumPlotter:
     def __init__(self):
         self.init_plot()
         self.init_mic()
+        self.init_matrix()
 
     def init_plot(self):
         _, ax = plt.subplots(3)
@@ -56,7 +62,7 @@ class SpectrumPlotter:
     def init_mic(self):
         FORMAT = pyaudio.paInt16  # We use 16bit format per sample
         CHANNELS = 1
-        self.RATE = 44100
+        self.RATE = 44100//2
         self.CHUNK = 1024  # 1024bytes of data red from a buffer
         RECORD_SECONDS = 0.1
         WAVE_OUTPUT_FILENAME = "file.wav"
@@ -73,6 +79,11 @@ class SpectrumPlotter:
         global keep_going
         keep_going = True
 
+    def init_matrix(self):
+        self.board = Arduino('COM3')
+        self.matrix = led_matrix.LedMatrix(self.board)
+        self.matrix.setup()
+
     def plot_data(self, in_data):
         # get and convert the data to float
         audio_data = np.fromstring(in_data, np.int16)
@@ -80,7 +91,7 @@ class SpectrumPlotter:
         audio_data = butter_bandpass_filter(audio_data, 300, 3400, self.RATE, 7)
         # Fast Fourier Transform, 10*log10(abs) is to scale it to dB
         # and make sure it's not imaginary
-        dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:200]
+        dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]
 
         # Force the new data into the plot, but without redrawing axes.
         # If uses plt.draw(), axes are re-drawn every time
@@ -93,6 +104,9 @@ class SpectrumPlotter:
         self.li2.set_ydata(dfft)
         self.li3.set_xdata(np.arange(8))
         self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 100))
+
+        #for col, val in enumerate(self.li3.get_ydata()):
+        #    self.matrix.maxAll(col+1, 2*pow(2, val)-1)
 
         # Show the updated plot, but without blocking
         plt.pause(0.01)
@@ -113,6 +127,13 @@ class SpectrumPlotter:
         print("| Press Ctrl+C to Break Recording |")
         print("+---------------------------------+\n")
 
+        def update_matrix():
+            while(True):
+                for col, val in enumerate(reversed(self.li3.get_ydata())):
+                    self.matrix.maxAll(int(col + 1), int(2 * pow(2, int(val)) - 1))
+                sleep(.25)
+        threading.Thread(target=update_matrix).start()
+
         # Loop so program doesn't end while the stream callback's
         # itself for new data
         while keep_going:
@@ -127,6 +148,9 @@ class SpectrumPlotter:
         self.stream.close()
 
         self.audio.terminate()
+
+    def get_binned_data(self):
+        return self.li3.get_ydata()
 
 if __name__ == "__main__":
     p = SpectrumPlotter()

@@ -31,9 +31,11 @@ class SpectrumPlotter:
         self.init_mic()
         self.init_matrix()
 
+        self.annotation_list = []
+
     def init_plot(self):
         print('Initializing plot...')
-        _, ax = plt.subplots(3)
+        _, self.ax = plt.subplots(3)
 
         # Prepare the Plotting Environment with random starting values
         x1 = np.arange(10000)
@@ -42,20 +44,20 @@ class SpectrumPlotter:
         y2 = np.random.randn(8)
 
         # Plot 0 is for raw audio data
-        self.li, = ax[0].plot(x1, y1)
-        ax[0].set_xlim(0, 1000)
-        ax[0].set_ylim(-5000, 5000)
-        ax[0].set_title("Raw Audio Signal")
+        self.li, = self.ax[0].plot(x1, y1)
+        self.ax[0].set_xlim(0, 1000)
+        self.ax[0].set_ylim(-5000, 5000)
+        self.ax[0].set_title("Raw Audio Signal")
         # Plot 1 is for the FFT of the audio
-        self.li2, = ax[1].plot(x1, y1)
-        ax[1].set_xlim(0, 2000)
-        ax[1].set_ylim(0, 100)
-        ax[1].set_title("Fast Fourier Transform")
+        self.li2, = self.ax[1].plot(x1, y1)
+        self.ax[1].set_xlim(0, 2000)
+        self.ax[1].set_ylim(0, 100)
+        self.ax[1].set_title("Fast Fourier Transform")
         # Plot 2 is for the binned FFT
-        self.li3 = ax[2].plot(x2, y2, 'ro')[0]  # for some reason, returned as a list of 1
-        ax[2].set_xlim(0, 7)
-        ax[2].set_ylim(0, 7)
-        ax[2].set_title("8-Binned FFT")
+        self.li3 = self.ax[2].plot(x2, y2, 'ro')[0]  # for some reason, returned as a list of 1
+        self.ax[2].set_xlim(0, 7)
+        self.ax[2].set_ylim(0, 7)
+        self.ax[2].set_title("8-Binned FFT")
         # Show the plot, but without blocking updates
         plt.pause(0.01)
         plt.tight_layout()
@@ -111,8 +113,11 @@ class SpectrumPlotter:
         self.li3.set_xdata(np.arange(8))
         self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 75))
 
-        #for col, val in enumerate(self.li3.get_ydata()):
-        #    self.matrix.maxAll(col+1, 2*pow(2, val)-1)
+        for a in self.annotation_list:
+            a.remove()
+            self.annotation_list.remove(a)
+        for i, txt in enumerate(self.li3.get_ydata()):
+            self.annotation_list.append(self.ax[2].annotate(str(txt), (self.li3.get_xdata()[i], self.li3.get_ydata()[i])))
 
         # Show the updated plot, but without blocking
         plt.pause(0.01)
@@ -136,7 +141,7 @@ class SpectrumPlotter:
         def update_matrix():
             while(True):
                 for col, val in enumerate(reversed(self.li3.get_ydata())):
-                    self.matrix.maxAll(int(col + 1), int(2 * pow(2, int(val)) - 1))
+                    self.matrix.maxAll(int(col + 1), int(2 * pow(2, val) - 1))
                 sleep(1/30)
         threading.Thread(target=update_matrix).start()
 

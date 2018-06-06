@@ -4,7 +4,7 @@ Based on https://gist.github.com/ZWMiller/53232427efc5088007cab6feee7c6e4c
 import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, sosfiltfilt
 from pyfirmata import Arduino
 import threading
 from time import sleep
@@ -17,12 +17,12 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
     nyq = 0.5 * fs
     low = lowcut / nyq
     high = highcut / nyq
-    b, a = butter(order, [low, high], btype='bandpass', output='ba')
-    return b, a
+    sos = butter(order, [low, high], analog=False, btype='bandpass', output='sos')
+    return sos
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-    b, a = butter_bandpass(lowcut, highcut, fs, order=order)
-    y = lfilter(b, a, data)
+    sos = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = sosfiltfilt(sos, data)
     return y
 
 class SpectrumPlotter:
@@ -96,7 +96,7 @@ class SpectrumPlotter:
         # get and convert the data to float
         audio_data = np.fromstring(in_data, np.int16)
         # apply band-pass to amplify human speech range
-        audio_data = butter_bandpass_filter(audio_data, 300, 3400, self.RATE, 7)
+        audio_data = butter_bandpass_filter(audio_data, 300, 3400, self.RATE, 20)
         # Fast Fourier Transform, 10*log10(abs) is to scale it to dB
         # and make sure it's not imaginary
         dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]

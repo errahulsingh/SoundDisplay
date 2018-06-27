@@ -4,10 +4,11 @@ Based on https://gist.github.com/ZWMiller/53232427efc5088007cab6feee7c6e4c
 import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
-from scipy.signal import butter, sosfiltfilt
+from scipy.signal import butter, sosfiltfilt, decimate
 from pyfirmata import Arduino
 import threading
 from time import sleep
+from math import ceil
 
 import led_matrix
 
@@ -51,7 +52,7 @@ class SpectrumPlotter:
         # Plot 1 is for the FFT of the audio
         self.li2, = self.ax[1].plot(x1, y1)
         self.ax[1].set_xlim(0, 2000)
-        self.ax[1].set_ylim(0, 100)
+        self.ax[1].set_ylim(0, 1000000)
         self.ax[1].set_title("Fast Fourier Transform")
         # Plot 2 is for the binned FFT
         self.li3 = self.ax[2].plot(x2, y2, 'ro')[0]  # for some reason, returned as a list of 1
@@ -99,7 +100,8 @@ class SpectrumPlotter:
         audio_data = butter_bandpass_filter(audio_data, 300, 3400, self.RATE, 20)
         # Fast Fourier Transform, 10*log10(abs) is to scale it to dB
         # and make sure it's not imaginary
-        dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]
+        #dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]
+        dfft = abs(np.fft.rfft(audio_data))[:300]
 
         # Force the new data into the plot, but without redrawing axes.
         # If uses plt.draw(), axes are re-drawn every time
@@ -111,7 +113,7 @@ class SpectrumPlotter:
         self.li2.set_xdata(np.arange(len(dfft)) * 10.)
         self.li2.set_ydata(dfft)
         self.li3.set_xdata(np.arange(8))
-        self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 75))
+        self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 1000000))
 
         for a in self.annotation_list:
             a.remove()
@@ -128,7 +130,9 @@ class SpectrumPlotter:
 
     @staticmethod
     def discretize_plot(data, xbins, ybins, maxval):
-        return [int((val/maxval)*ybins) for val in data[0::len(data)//xbins][:xbins]]
+        #return [int((val/maxval)*ybins) for val in data[0::len(data)//xbins][:xbins]]
+        downsample = decimate(data, int(ceil(len(data)/xbins)), zero_phase=True)
+        return [int((val/maxval)*ybins) for val in downsample]
 
     def start_listening(self):
         global keep_going

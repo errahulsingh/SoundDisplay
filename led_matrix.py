@@ -95,6 +95,9 @@ class LedMatrix:
         self.maxAll(max7219_reg_intensity, 0x0f & 0x0f)
         print('Done')
 
+    def draw_matrix(self, point_matrix):
+        for c_id, pointlist in enumerate(point_matrix):
+            self.maxSingle(c_id+1, int(''.join(str(v) for v in pointlist), 2))
 
 def loop(matrix):
     """ Verify that the functions work. """
@@ -117,6 +120,18 @@ def loop(matrix):
     matrix.maxAll(6, 63)
     matrix.maxAll(7, 127)
     matrix.maxAll(8, 255)
+    sleep(.25)
+    matrix.clear()
+    sleep(.25)
+    x = [[1, 0, 0, 0, 0, 0, 0, 1],
+         [0, 1, 0, 0, 0, 0, 1, 0],
+         [0, 0, 1, 0, 0, 1, 0, 0],
+         [0, 0, 0, 1, 1, 0, 0, 0],
+         [0, 0, 0, 1, 1, 0, 0, 0],
+         [0, 0, 1, 0, 0, 1, 0, 0],
+         [0, 1, 0, 0, 0, 0, 1, 0],
+         [1, 0, 0, 0, 0, 0, 0, 1]]
+    matrix.draw_matrix(x)
     sleep(.25)
     matrix.clear()
     sleep(.25)

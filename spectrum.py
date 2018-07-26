@@ -1,18 +1,20 @@
 """
 Based on https://gist.github.com/ZWMiller/53232427efc5088007cab6feee7c6e4c
 """
+import threading
+from math import ceil
+from time import sleep
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pyaudio
-from scipy.signal import butter, sosfiltfilt, decimate
 from pyfirmata import Arduino
-import threading
-from time import sleep
-from math import ceil
+from scipy.signal import butter, sosfiltfilt, decimate
 
 import led_matrix
 
 global keep_going
+
 
 def butter_bandpass(lowcut, highcut, fs, order=5):
     nyq = 0.5 * fs
@@ -21,10 +23,17 @@ def butter_bandpass(lowcut, highcut, fs, order=5):
     sos = butter(order, [low, high], analog=False, btype='bandpass', output='sos')
     return sos
 
+
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
     sos = butter_bandpass(lowcut, highcut, fs, order=order)
     y = sosfiltfilt(sos, data)
     return y
+
+
+def discretize_plot(data, xbins, ybins, maxval):
+    downsample = decimate(data, int(ceil(len(data) / xbins)), zero_phase=True)
+    return [int((val / maxval) * ybins) for val in downsample]
+
 
 class SpectrumPlotter:
     def __init__(self):
@@ -68,10 +77,8 @@ class SpectrumPlotter:
         print('Initializing mic...')
         FORMAT = pyaudio.paInt16  # We use 16bit format per sample
         CHANNELS = 1
-        self.RATE = 44100//2
+        self.RATE = 44100 // 2
         self.CHUNK = 1024  # 1024bytes of data red from a buffer
-        RECORD_SECONDS = 0.1
-        WAVE_OUTPUT_FILENAME = "file.wav"
 
         self.audio = pyaudio.PyAudio()
 
@@ -93,46 +100,38 @@ class SpectrumPlotter:
         self.matrix = led_matrix.LedMatrix(self.board)
         self.matrix.setup()
 
-    def plot_data(self, in_data):
+    def process_data(self, in_data):
         # get and convert the data to float
         audio_data = np.fromstring(in_data, np.int16)
         # apply band-pass to amplify human speech range
         audio_data = butter_bandpass_filter(audio_data, 300, 3400, self.RATE, 20)
         # Fast Fourier Transform, 10*log10(abs) is to scale it to dB
         # and make sure it's not imaginary
-        #dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]
-        dfft = abs(np.fft.rfft(audio_data))[:300]
+        # dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]
+        dfft = 10*abs(np.fft.rfft(audio_data))[:300]
 
         # Force the new data into the plot, but without redrawing axes.
         # If uses plt.draw(), axes are re-drawn every time
-        # print audio_data[0:10]
-        # print dfft[0:10]
-        # print
         self.li.set_xdata(np.arange(len(audio_data)))
         self.li.set_ydata(audio_data)
         self.li2.set_xdata(np.arange(len(dfft)) * 10.)
         self.li2.set_ydata(dfft)
         self.li3.set_xdata(np.arange(8))
-        self.li3.set_ydata(self.discretize_plot(dfft, 8, 8, 1000000))
+        self.li3.set_ydata(discretize_plot(dfft, 8, 8, 1000000))
 
         for a in self.annotation_list:
             a.remove()
             self.annotation_list.remove(a)
         for i, txt in enumerate(self.li3.get_ydata()):
-            self.annotation_list.append(self.ax[2].annotate(str(txt), (self.li3.get_xdata()[i], self.li3.get_ydata()[i])))
+            self.annotation_list.append(
+                self.ax[2].annotate(str(txt), (self.li3.get_xdata()[i], self.li3.get_ydata()[i])))
 
         # Show the updated plot, but without blocking
-        plt.pause(0.01)
+        plt.pause(1 / 30)
         if keep_going:
             return True
         else:
             return False
-
-    @staticmethod
-    def discretize_plot(data, xbins, ybins, maxval):
-        #return [int((val/maxval)*ybins) for val in data[0::len(data)//xbins][:xbins]]
-        downsample = decimate(data, int(ceil(len(data)/xbins)), zero_phase=True)
-        return [int((val/maxval)*ybins) for val in downsample]
 
     def start_listening(self):
         global keep_going
@@ -143,17 +142,18 @@ class SpectrumPlotter:
         print("+---------------------------------+\n")
 
         def update_matrix():
-            while(True):
+            while True:
                 for col, val in enumerate(reversed(self.li3.get_ydata())):
-                    self.matrix.maxAll(int(col + 1), int((2*pow(2, val-1)) - 1))
-                sleep(1/30)
+                    self.matrix.maxAll(int(col + 1), int((2 * pow(2, val - 1)) - 1))
+                sleep(1 / 30)
+
         threading.Thread(target=update_matrix).start()
 
         # Loop so program doesn't end while the stream callback's
         # itself for new data
         while keep_going:
             try:
-                self.plot_data(self.stream.read(self.CHUNK))
+                self.process_data(self.stream.read(self.CHUNK))
             except KeyboardInterrupt:
                 keep_going = False
 
@@ -166,6 +166,7 @@ class SpectrumPlotter:
 
     def get_binned_data(self):
         return self.li3.get_ydata()
+
 
 if __name__ == "__main__":
     p = SpectrumPlotter()

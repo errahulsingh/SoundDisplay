@@ -105,9 +105,7 @@ class SpectrumPlotter:
         audio_data = np.fromstring(in_data, np.int16)
         # apply band-pass to amplify human speech range
         audio_data = butter_bandpass_filter(audio_data, 300, 3400, self.RATE, 20)
-        # Fast Fourier Transform, 10*log10(abs) is to scale it to dB
-        # and make sure it's not imaginary
-        # dfft = 10. * np.log10(abs(np.fft.rfft(audio_data)))[:300]
+        # Fast Fourier Transform, 10*abs to scale it up and make sure it's all positive
         dfft = 10*abs(np.fft.rfft(audio_data))[:300]
 
         # Force the new data into the plot, but without redrawing axes.
@@ -128,10 +126,7 @@ class SpectrumPlotter:
 
         # Show the updated plot, but without blocking
         plt.pause(1 / 30)
-        if keep_going:
-            return True
-        else:
-            return False
+        return keep_going
 
     def start_listening(self):
         global keep_going
@@ -147,7 +142,7 @@ class SpectrumPlotter:
                     self.matrix.maxAll(int(col + 1), int((2 * pow(2, val - 1)) - 1))
                 sleep(1 / 30)
 
-        threading.Thread(target=update_matrix).start()
+        threading.Thread(target=update_matrix, daemon=True).start()
 
         # Loop so program doesn't end while the stream callback's
         # itself for new data
@@ -163,9 +158,6 @@ class SpectrumPlotter:
         self.stream.close()
 
         self.audio.terminate()
-
-    def get_binned_data(self):
-        return self.li3.get_ydata()
 
 
 if __name__ == "__main__":

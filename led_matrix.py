@@ -10,9 +10,9 @@ from pyfirmata import Arduino
 HIGH = 1
 LOW = 0
 
-dataIn = 2
-load = 4
-clock = 3
+dataIn = 3
+load = 5
+clock = 6
 maxInUse = 1
 
 max7219_reg_noop = 0x00
